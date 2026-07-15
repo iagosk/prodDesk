@@ -30,6 +30,17 @@ class TabelaHashProdutos:
                 return valor
         return None
 
+    def remover(self, nome_produto):
+        """Remove um produto da tabela hash. Retorna True se removido, False caso contrário."""
+        indice = self._funcao_hash(nome_produto)
+        gaveta = self.tabela[indice]
+
+        for i, (chave, valor) in enumerate(gaveta):
+            if chave == nome_produto:
+                gaveta.pop(i)
+                return True
+        return False
+
     def listar(self):
         """Retorna uma lista com todos os produtos cadastrados."""
         todos_produtos = []
@@ -43,7 +54,7 @@ class TabelaHashProdutos:
 def main(page: ft.Page):
     page.title = "Gerenciador de Estoque - ProdDesk"
     page.window_width = 480
-    page.window_height = 700  # Mantido para caber a lista e o status confortavelmente
+    page.window_height = 750  # Ajustado ligeiramente para comportar a nova seção
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.padding = 20
 
@@ -53,23 +64,23 @@ def main(page: ft.Page):
     txt_nome = ft.TextField(label="Nome do Produto", expand=True)
     txt_preco = ft.TextField(label="Preço (R$)", expand=True)
     txt_busca = ft.TextField(label="Digite o produto para buscar", expand=True)
+    txt_remover = ft.TextField(label="Digite o produto para remover", expand=True)
 
     # Janela de Status Dinâmica (Container que suporta textos e blocos extras)
     lbl_status = ft.Container(
         content=ft.Column(spacing=10, tight=True),
         padding=12,
         border_radius=10,
-        visible=False,  # Começa invisível até que ocorra uma ação
+        visible=False,
     )
 
     # Elemento visual para exibir a lista de estoque
-    lista_produtos_view = ft.ListView(expand=True, spacing=5, height=130)
+    lista_produtos_view = ft.ListView(expand=True, spacing=5, height=110)
 
     # Função unificada para mostrar mensagens estilizadas
     def mostrar_mensagem(texto, cor_fundo, cor_texto, icone, bloco_extra=None):
         lbl_status.bgcolor = cor_fundo
 
-        # Linha básica de status com ícone e texto descritivo
         elementos = [
             ft.Row(
                 [
@@ -80,7 +91,6 @@ def main(page: ft.Page):
             )
         ]
 
-        # Se houver um bloco de produto (como no caso da busca), adicionamos ele aqui
         if bloco_extra:
             elementos.append(bloco_extra)
 
@@ -145,7 +155,6 @@ def main(page: ft.Page):
                 icone=ft.Icons.CHECK_CIRCLE_OUTLINE,
             )
 
-            # Atualiza a lista visual após salvar com sucesso
             atualizar_lista()
 
         except ValueError:
@@ -172,7 +181,6 @@ def main(page: ft.Page):
         indice = inventario._funcao_hash(nome)
 
         if preco is not None:
-            # Criamos o bloco visual do produto encontrado, idêntico ao do estoque
             bloco_busca = ft.Container(
                 content=ft.ListTile(
                     leading=ft.Icon(
@@ -205,11 +213,43 @@ def main(page: ft.Page):
                 icone=ft.Icons.WARNING_AMBER_ROUNDED,
             )
 
+    def remover_clicado(e):
+        nome = txt_remover.value.strip()
+
+        if not nome:
+            mostrar_mensagem(
+                texto="Erro: Digite o nome de um produto para remover!",
+                cor_fundo=ft.Colors.RED_100,
+                cor_texto=ft.Colors.RED_900,
+                icone=ft.Icons.ERROR_OUTLINE,
+            )
+            return
+
+        indice = inventario._funcao_hash(nome)
+        sucesso = inventario.remover(nome)
+
+        if sucesso:
+            txt_remover.value = ""
+            mostrar_mensagem(
+                texto=f"Sucesso! O produto '{nome}' foi removido do estoque (Índice: {indice}).",
+                cor_fundo=ft.Colors.GREY_300,
+                cor_texto=ft.Colors.GREY_900,
+                icone=ft.Icons.DELETE_OUTLINE_ROUNDED,
+            )
+            atualizar_lista()
+        else:
+            mostrar_mensagem(
+                texto=f"Não foi possível remover: '{nome}' não existe no estoque.",
+                cor_fundo=ft.Colors.ORANGE_100,
+                cor_texto=ft.Colors.ORANGE_900,
+                icone=ft.Icons.WARNING_AMBER_ROUNDED,
+            )
+
     # Adiciona o layout inicial na página
     page.add(
         ft.Text("Sistema de Estoque - ProdDesk", size=22, weight=ft.FontWeight.BOLD),
         ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
-        # Seção de Cadastro (Botão atualizado para ft.Button)
+        # Seção de Cadastro
         ft.Container(
             content=ft.Column(
                 [
@@ -228,17 +268,26 @@ def main(page: ft.Page):
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
             border_radius=10,
         ),
-        ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
-        # Seção de Busca (Botão atualizado para ft.Button)
+        ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
+        # Seção de Busca e Remoção (agrupadas lado a lado ou em blocos limpos)
         ft.Container(
             content=ft.Column(
                 [
-                    ft.Text("Buscar Preço", weight=ft.FontWeight.BOLD),
+                    ft.Text("Consultar ou Remover", weight=ft.FontWeight.BOLD),
                     ft.Row([txt_busca]),
                     ft.Button(
                         "Buscar com Hash",
                         on_click=buscar_clicado,
                         bgcolor=ft.Colors.BLUE_700,
+                        color=ft.Colors.WHITE,
+                        width=400,
+                    ),
+                    ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
+                    ft.Row([txt_remover]),
+                    ft.Button(
+                        "Remover da Tabela",
+                        on_click=remover_clicado,
+                        bgcolor=ft.Colors.RED_700,
                         color=ft.Colors.WHITE,
                         width=400,
                     ),
@@ -248,8 +297,8 @@ def main(page: ft.Page):
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
             border_radius=10,
         ),
+        ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
         # Seção: Lista de Itens Cadastrados
-        ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
         ft.Container(
             content=ft.Column(
                 [
@@ -261,12 +310,11 @@ def main(page: ft.Page):
             bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
             border_radius=10,
         ),
-        ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
-        # Local dinâmico da janelinha de feedback/status (Sucesso, Alertas, Buscas)
+        ft.Divider(height=5, color=ft.Colors.TRANSPARENT),
+        # Local dinâmico da janelinha de feedback/status
         lbl_status,
     )
 
-    # Inicializa a lista de produtos (mostrará "Nenhum produto cadastrado" no início)
     atualizar_lista()
 
 
